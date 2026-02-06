@@ -41,7 +41,7 @@ function InteractiveClickPoint.registerXMLPaths(schema, basePath, controllerPath
         iconTypes = string.format("%s %s", iconTypes, name)
     end
 
-    schema:register(XMLValueType.STRING, basePath .. "#iconType", ("Types of click point: %s"):format(iconTypes), "CROSS", true)
+    schema:register(XMLValueType.STRING, basePath .. "#iconType", ("Types of click point: %s"):format(iconTypes), "CROSS")
     schema:register(XMLValueType.BOOL, basePath .. "#alignToCamera", "Aligns click point to current camera", true)
     schema:register(XMLValueType.BOOL, basePath .. "#invertX", "Invert click icon on x-axis", false)
     schema:register(XMLValueType.BOOL, basePath .. "#invertZ", "Invert click icon on z-axis", false)
