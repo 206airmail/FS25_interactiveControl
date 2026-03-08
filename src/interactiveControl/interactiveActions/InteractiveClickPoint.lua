@@ -193,8 +193,8 @@ function InteractiveClickPoint:setActivated(activated, forced)
 end
 
 ---Updates screen position of clickPoint
----@param mousePosX number x position of mouse
----@param mousePosY number y position of mouse
+---@param mousePosX number|nil x position of mouse
+---@param mousePosY number|nil y position of mouse
 ---@param isIndoor boolean True if update is indoor
 ---@param isOutdoor boolean True if update is outdoor
 function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndoor, isOutdoor)
@@ -205,15 +205,29 @@ function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndo
     self.screenPosY = sy
 
     local isOnScreen = sx > -1 and sx < 2 and sy > -1 and sy < 2 and sz <= 1
+    if not isOnScreen then
+        return
+    end
 
-    if isOnScreen then
-        local cameraNode = getCamera()
+    local cameraNode = getCamera()
+    if entityExists(cameraNode) then
+        if self.alignToCamera then
+            -- Align clickPoint node to camera
+            local xC, yC, zC = getWorldTranslation(cameraNode)
+            local dirX, dirY, dirZ = xC - x, yC - y, zC - z
 
-        if entityExists(cameraNode) then
-            if self.alignToCamera then
-                -- Align clickPoint node to camera
-                local xC, yC, zC = getWorldTranslation(cameraNode)
-                local dirX, dirY, dirZ = xC - x, yC - y, zC - z
+            if self.invertZ then
+                dirX = -dirX
+                dirY = -dirY
+                dirZ = -dirZ
+            end
+
+            I3DUtil.setWorldDirection(self.node, dirX, dirY, dirZ, 0, 1, 0)
+        else
+            if isOutdoor then
+                -- Disable static clickPoint if not in camera direction view
+                local dirX, dirY, dirZ = localDirectionToWorld(self.node, 0, 0, 1)
+                local cameraDirectionX, cameraDirectionY, cameraDirectionZ = localDirectionToWorld(cameraNode, 0, 0, -1)
 
                 if self.invertZ then
                     dirX = -dirX
@@ -221,30 +235,16 @@ function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndo
                     dirZ = -dirZ
                 end
 
-                I3DUtil.setWorldDirection(self.node, dirX, dirY, dirZ, 0, 1, 0)
-            else
-                if isOutdoor then
-                    -- Disable static clickPoint if not in camera direction view
-                    local dirX, dirY, dirZ = localDirectionToWorld(self.node, 0, 0, 1)
-                    local cameraDirectionX, cameraDirectionY, cameraDirectionZ = localDirectionToWorld(cameraNode, 0, 0, -1)
-
-                    if self.invertZ then
-                        dirX = -dirX
-                        dirY = -dirY
-                        dirZ = -dirZ
-                    end
-
-                    local dotProduct = MathUtil.dotProduct(cameraDirectionX, cameraDirectionY, cameraDirectionZ, dirX, dirY, dirZ)
-                    if dotProduct > InteractiveClickPoint.DOT_PRODUCT_LIMIT then
-                        mousePosX = nil
-                        mousePosY = nil
-                    end
+                local dotProduct = MathUtil.dotProduct(cameraDirectionX, cameraDirectionY, cameraDirectionZ, dirX, dirY, dirZ)
+                if dotProduct > InteractiveClickPoint.DOT_PRODUCT_LIMIT then
+                    mousePosX = nil
+                    mousePosY = nil
                 end
             end
         end
-
-        self:updateClickable(mousePosX, mousePosY)
     end
+
+    self:updateClickable(mousePosX, mousePosY)
 end
 
 ---Updates clickable state by mouse position

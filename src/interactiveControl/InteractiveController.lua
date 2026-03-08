@@ -619,7 +619,7 @@ function InteractiveController:getActiveActionDirection()
 end
 
 ---Returns action text by controller state
----@param getForced boolean
+---@param getForced? boolean
 ---@return string actionText
 function InteractiveController:getActionText(getForced)
     if getForced == nil or getForced then
@@ -649,10 +649,10 @@ end
 
 ------------------------------------------------------ Cylindered ------------------------------------------------------
 
----Returns true if moving tools are set, false otherwise
----@return boolean hasDependingMovingTools
-function InteractiveController:hasDependingMovingTools()
-    return table.size(self.movingToolsInactive) > 0
+---Returns table with all depending moving tools
+---@return table
+function InteractiveController:getMovingTools()
+    return self.movingToolsInactive
 end
 
 ---Returns true if movingTool is inactive, false otherwise
@@ -666,10 +666,10 @@ function InteractiveController:getMovingToolIsInactive(movingTool)
     return false
 end
 
----Returns true if moving parts are set, false otherwise
----@return boolean hasDependingMovingParts
-function InteractiveController:hasDependingMovingParts()
-    return table.size(self.movingPartsInactive) > 0
+---Returns table with all depending moving parts
+---@return table
+function InteractiveController:getMovingParts()
+    return self.movingPartsInactive
 end
 
 ---Returns true if movingPart is inactive, false otherwise
