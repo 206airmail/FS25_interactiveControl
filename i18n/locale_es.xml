@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<l10n>
+    <translationContributors>Funjetor / Zarvaoo_16</translationContributors>
+    <locale>es</locale>
+
+    <elements>
+        <e k="actionIC_activate" v="IC: Activar"/>
+        <e k="actionIC_deactivate" v="IC: Desactivar"/>
+        <e k="actionIC_startMotor" v="IC: Arrancar motor"/>
+        <e k="actionIC_stopMotor" v="IC: Parar motor"/>
+        <e k="actionIC_liftImplement" v="IC: Elevar implemento"/>
+        <e k="actionIC_lowerImplement" v="IC: Bajar implemento"/>
+        <e k="actionIC_turnOnImplement" v="IC: Encender implemento"/>
+        <e k="actionIC_turnOffImplement" v="IC: Apagar implemento"/>
+        <e k="actionIC_foldImplement" v="IC: Plegar implemento"/>
+        <e k="actionIC_unfoldImplement" v="IC: Desplegar implemento"/>
+        <e k="actionIC_foldVehicle" v="IC: Plegar vehículo"/>
+        <e k="actionIC_unfoldVehicle" v="IC: Desplegar vehículo"/>
+        <e k="actionIC_foldPipe" v="IC: Plegar tubo"/>
+        <e k="actionIC_unfoldPipe" v="IC: Desplegar tubo"/>
+        <e k="actionIC_openRoof" v="IC: Abrir techo"/>
+        <e k="actionIC_closeRoof" v="IC: Cerrar techo"/>
+        <e k="actionIC_openDoor" v="IC: Abrir puerta"/>
+        <e k="actionIC_closeDoor" v="IC: Cerrar puerta"/>
+        <e k="actionIC_openWindow" v="IC: Abrir ventana"/>
+        <e k="actionIC_closeWindow" v="IC: Cerrar ventana"/>
+        <e k="actionIC_lightsOn" v="IC: Encender luces"/>
+        <e k="actionIC_lightsOff" v="IC: Apagar luces"/>
+        <e k="actionIC_highbeamlightsOn" v="IC: Encender luces largas"/>
+        <e k="actionIC_highbeamlightsOff" v="IC: Apagar luces largas"/>
+        <e k="actionIC_workLightsFrontOn" v="IC: Encender luces de trabajo delanteras"/>
+        <e k="actionIC_workLightsFrontOff" v="IC: Apagar luces de trabajo delanteras"/>
+        <e k="actionIC_workLightsBackOn" v="IC: Encender luces de trabajo traseras"/>
+        <e k="actionIC_workLightsBackOff" v="IC: Apagar luces de trabajo traseras"/>
+        <e k="actionIC_turnLightsLeftOn" v="IC: Encender intermitente izquierdo"/>
+        <e k="actionIC_turnLightsLeftOff" v="IC: Apagar intermitente izquierdo"/>
+        <e k="actionIC_turnLightsRightOn" v="IC: Encender intermitente derecho"/>
+        <e k="actionIC_turnLightsRightOff" v="IC: Apagar intermitente derecho"/>
+        <e k="actionIC_hazardLightsOn" v="IC: Encender luces de emergencia"/>
+        <e k="actionIC_hazardLightsOff" v="IC: Apagar luces de emergencia"/>
+        <e k="actionIC_pipeLightsOn" v="IC: Encender luz del tubo"/>
+        <e k="actionIC_pipeLightsOff" v="IC: Apagar luz del tubo"/>
+        <e k="actionIC_sa_activate" v="IC: Activar asistencia de dirección"/>
+        <e k="actionIC_sa_deactivate" v="IC: Desactivar asistencia de dirección"/>
+        <e k="actionIC_sa_lines_activate" v="IC: Mostrar líneas de asistencia de dirección"/>
+        <e k="actionIC_sa_lines_deactivate" v="IC: Ocultar líneas de asistencia de dirección"/>
+        <e k="actionIC_cruiseControl_toggle" v="IC: Activar/desactivar control de crucero"/>
+        <e k="actionIC_openCover" v="IC: Abrir cubierta"/>
+        <e k="actionIC_closeCover" v="IC: Cerrar cubierta"/>
+        <e k="actionIC_discharge" v="IC: Descargar"/>
+        <e k="actionIC_stop_discharge" v="IC: Detener descarga"/>
+        <e k="actionIC_radioOn" v="IC: Encender radio"/>
+        <e k="actionIC_radioOff" v="IC: Apagar radio"/>
+        <e k="actionIC_crabSteering_toggle" v="IC: Cambiar modo de dirección"/>
+        <e k="actionIC_reverseDriving_toggle" v="IC: Activar/desactivar conducción inversa"/>
+        <e k="actionIC_baler_toggleSize" v="IC: Cambiar tamaño de paca (%dcm)"/>
+        <e k="actionIC_baler_dropBale" v="IC: Empacadora: Descargar paca"/>
+        <e k="actionIC_baler_automaticDropOn" v="IC: Empacadora: Activar descarga automática de pacas"/>
+        <e k="actionIC_baler_automaticDropOff" v="IC: Empacadora: Desactivar descarga automática de pacas"/>
+        <e k="actionIC_balerwrapper_dropBale" v="IC: Envolvedora de pacas: Descargar paca"/>
+        <e k="actionIC_balerwrapper_automaticDropOn" v="IC: Envolvedora de pacas: Activar descarga automática de pacas"/>
+        <e k="actionIC_balerwrapper_automaticDropOff" v="IC: Envolvedora de pacas: Desactivar descarga automática de pacas"/>
+        <e k="actionIC_parkingbrakeOn" v="IC: Activar freno de estacionamiento"/>
+        <e k="actionIC_parkingbrakeOff" v="IC: Desactivar freno de estacionamiento"/>
+        <e k="actionIC_diffLockFrontOn" v="IC: Activar bloqueo del diferencial delantero"/>
+        <e k="actionIC_diffLockFrontOff" v="IC: Desactivar bloqueo del diferencial delantero"/>
+        <e k="actionIC_allWheelDriveOn" v="IC: Activar tracción total"/>
+        <e k="actionIC_allWheelDriveOff" v="IC: Desactivar tracción total"/>
+        <e k="actionIC_diffLockBackOn" v="IC: Activar bloqueo del diferencial trasero"/>
+        <e k="actionIC_diffLockBackOff" v="IC: Desactivar bloqueo del diferencial trasero"/>
+        <e k="actionIC_turnPumpOn" v="IC: Encender bomba"/>
+        <e k="actionIC_turnPumpOff" v="IC: Apagar bomba"/>
+        <e k="actionIC_pumpDirectionDrain" v="IC: Cambiar dirección de la bomba a: Vaciar"/>
+        <e k="actionIC_pumpDirectionFill" v="IC: Cambiar dirección de la bomba a: Llenar"/>
+        <e k="action_activateIC" v="Activar Control Interactivo"/>
+        <e k="action_deactivateIC" v="Desactivar Control Interactivo"/>
+        <e k="configuration_interactiveControl" v="Control Interactivo"/>
+        <e k="input_IC_CLICK" v="IC: Punto de clic del Control Interactivo"/>
+        <e k="input_IC_TOGGLE_STATE" v="IC: Activar/desactivar Control Interactivo"/>
+        <e k="settingsIC_title" v="Control Interactivo"/>
+        <e k="settingsIC_state_title" v="Estado de IC"/>
+        <e k="settingsIC_state_tooltip" v="Activa, desactiva o deja conmutables los controles interactivos."/>
+        <e k="settingsIC_state_option01" v="Conmutable"/>
+        <e k="settingsIC_state_option02" v="Siempre activo"/>
+        <e k="settingsIC_state_option03" v="Desactivado"/>
+        <e k="settingsIC_keepAlive_title" v="Mantener IC activado"/>
+        <e k="settingsIC_keepAlive_tooltip" v="El Control Interactivo permanece activo al salir del vehículo."/>
+        <e k="settingsIC_clickPointHover_optionTime" v="%.1f s"/>
+        <e k="settingsIC_clickPointHover_optionTimeOff" v="Desactivado"/>
+        <e k="settingsIC_clickPointHover_title" v="Activación por pasar el cursor en IC"/>
+        <e k="settingsIC_clickPointHover_tooltip" v="Activa el Control Interactivo si mantienes el cursor sobre el punto de clic durante un tiempo determinado"/>
+    </elements>
+</l10n>
