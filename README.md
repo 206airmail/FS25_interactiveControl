@@ -53,7 +53,7 @@ The documentation is not finished yet, but should be sufficient for experienced 
                     <!-- Possible iconTypes: -->
                     <!-- CROSS, IGNITIONKEY, CRUISE_CONTROL, GPS, TURN_ON, ATTACHERJOINTS_LOWER, ATTACHERJOINTS_LIFT, ATTACHERJOINT, LIGHT_HIGH, LIGHT, TURNLIGHT_LEFT, TURNLIGHT_RIGHT, BEACON_LIGHT, ARROW -->
                     <!-- CONVERT INFO: forcedState is now forcedStateValue and type is float -->
-                    <clickPoint alignToCamera="true" animMaxLimit="1" animMinLimit="0" animName="string" blinkSpeedScale="1" foldMaxLimit="1" foldMinLimit="0" forcedStateValue="float" direction="1" iconType="CROSS" invertX="false" invertZ="false" node="node" scaleOffset="float" size="0.04" type="UNKNOWN" linkNode="node" rotation="x y z" translation="x y z"/>
+                    <clickPoint alignToCamera="true" animMaxLimit="1" animMinLimit="0" animName="string" blinkSpeedScale="1" foldMaxLimit="1" foldMinLimit="0" forcedStateValue="float" direction="1" iconType="CROSS" invertX="false" invertZ="false" node="node" scaleOffset="float" size="0.04" type="UNKNOWN" linkNode="node" rotation="x y z" translation="x y z" showClickIcon="true"/>
 
                     <!-- Add a button to toggle the event -->
                     <!-- CONVERT INFO: forcedState is now forcedStateValue and type is float -->

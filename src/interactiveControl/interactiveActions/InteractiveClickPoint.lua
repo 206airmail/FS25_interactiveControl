@@ -45,6 +45,7 @@ function InteractiveClickPoint.registerXMLPaths(schema, basePath, controllerPath
     schema:register(XMLValueType.BOOL, basePath .. "#alignToCamera", "Aligns click point to current camera", true)
     schema:register(XMLValueType.BOOL, basePath .. "#invertX", "Invert click icon on x-axis", false)
     schema:register(XMLValueType.BOOL, basePath .. "#invertZ", "Invert click icon on z-axis", false)
+    schema:register(XMLValueType.BOOL, basePath .. "#showClickIcon", "Show click icon if activated, if false the click point is still useable.", true)
 end
 
 ---Create new instance of InteractiveClickPoint
@@ -68,6 +69,7 @@ function InteractiveClickPoint.new(modName, modDirectory, customMt)
     self.invertZ = false
     self.sharedLoadRequestId = nil
     self.hoverTime = 0
+    self.showClickIcon = true
 
     return self
 end
@@ -115,6 +117,7 @@ function InteractiveClickPoint:loadFromXML(xmlFile, key, target, interactiveCont
     self.invertZ = xmlFile:getValue(key .. "#invertZ", false)
     self.rotation = xmlFile:getValue(key .. "#rotation", nil, true)
     self.translation = xmlFile:getValue(key .. "#translation", nil, true)
+    self.showClickIcon = xmlFile:getValue(key .. "#showClickIcon", true)
     self.sharedLoadRequestId = self:loadIconType(iconType, target)
 
     return true
@@ -184,7 +187,7 @@ function InteractiveClickPoint:setActivated(activated, forced)
     InteractiveClickPoint:superClass().setActivated(self, activated, forced)
 
     if self.clickIconNode ~= nil then
-        setVisibility(self.clickIconNode, self.activated)
+        setVisibility(self.clickIconNode, self.activated and self.showClickIcon)
     end
 
     if not self.activated then
@@ -256,7 +259,7 @@ function InteractiveClickPoint:updateClickable(mousePosX, mousePosY)
         local isMouseOver = mousePosX > self.screenPosX - halfSize and mousePosX < self.screenPosX + halfSize
             and mousePosY > self.screenPosY - halfSize and mousePosY < self.screenPosY + halfSize
 
-        if self.clickIconNode ~= nil then
+        if self.clickIconNode ~= nil and self.showClickIcon then
             local scale = getScale(self.clickIconNode)
             scale = math.abs(scale)
             if isMouseOver then
