@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
-<modDesc descVersion="103" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
+<modDesc descVersion="107" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Vertex Dezign</author>
-    <version>1.2.0.1</version>
+    <version>1.2.0.2</version>
 
     <title>
         <en>Interactive Control</en>
@@ -21,6 +21,12 @@ Using the controls you can steer different things:
 A few vehicles are already equipped with IC
 
 For further informations: <a href="https://github.com/TobiasF92/FS25_interactiveControl/blob/master/README.md">README</a> on Github.
+
+Changelog (1.2.0.2):
+- Added translation for Espanol
+- Added basic 'FS25_VariableTirePressure' function support
+- Added feature to control if the clickIcon is showed or not, function persists
+- Optimized various code
 
 Changelog (1.2.0.1):
 - Added translations for Ukrainian, Turkish
