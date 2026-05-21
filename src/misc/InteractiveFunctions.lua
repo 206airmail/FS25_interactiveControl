@@ -1482,3 +1482,171 @@ InteractiveFunctions.addFunction("BALEWRAPPER_TOGGLE_AUTOMATIC_DROP", {
         return true
     end
 })
+
+---FUNCTION_LIGHT_TOGGLE
+---Toggles one or more individual lights (bulb + lens) independently of the main vehicle lights system.
+---If the nodes are also referenced in <vehicle.lights>, pressing F to cycle lights will take priority
+---and overwrite the IC state on the next light change. For IC-exclusive lights, omit them from <vehicle.lights>.
+InteractiveFunctions.addFunction("LIGHT_TOGGLE", {
+    schemaFunc = function(schema, path)
+        schema:register(XMLValueType.NODE_INDEX, path .. ".realLight(?)#node",           "Real light source node (LIGHT_SOURCE class). Must NOT be in <vehicle.lights> — IC owns it exclusively via setVisibility.")
+        schema:register(XMLValueType.NODE_INDEX, path .. ".staticLightMesh(?)#node",     "Emissive mesh using the staticLight shader. Must NOT be in <staticLightCompounds> — IC owns it exclusively via lightIds shader params.")
+        schema:register(XMLValueType.FLOAT,      path .. ".staticLightMesh(?)#intensity","Emissive intensity when on (default 10). Match the intensity value you would have used on the <staticLightCompound> node.", 10)
+    end,
+    loadFunc = function(xmlFile, key, data, actor)
+        local target = actor.target
+
+        data.realLightNodes = {}
+        xmlFile:iterate(key .. ".realLight", function(_, realLightKey)
+            local node = xmlFile:getValue(realLightKey .. "#node", nil, target.components, target.i3dMappings)
+            if node ~= nil then
+                table.insert(data.realLightNodes, node)
+            else
+                Logging.xmlWarning(xmlFile, "LIGHT_TOGGLE: invalid realLight #node at '%s'", realLightKey)
+            end
+        end)
+
+        data.staticLightMeshes = {}
+        xmlFile:iterate(key .. ".staticLightMesh", function(_, meshKey)
+            local node = xmlFile:getValue(meshKey .. "#node", nil, target.components, target.i3dMappings)
+            if node == nil then
+                Logging.xmlWarning(xmlFile, "LIGHT_TOGGLE: invalid staticLightMesh #node at '%s'", meshKey)
+                return
+            end
+            if not getHasShaderParameter(node, "lightIds0") then
+                Logging.xmlWarning(xmlFile, "LIGHT_TOGGLE: staticLightMesh at '%s' is missing the lightIds0 shader parameter — ensure the node uses the staticLight shader variation", meshKey)
+                return
+            end
+            table.insert(data.staticLightMeshes, {
+                node      = node,
+                intensity = xmlFile:getValue(meshKey .. "#intensity", 10),
+            })
+        end)
+
+        if #data.realLightNodes == 0 and #data.staticLightMeshes == 0 then
+            Logging.xmlWarning(xmlFile, "LIGHT_TOGGLE has no valid nodes at '%s'", key)
+            return false
+        end
+
+        -- Apply initial off state so i3d-visible nodes match IC's default stateValue of 0.
+        for _, node in ipairs(data.realLightNodes) do
+            setVisibility(node, false)
+        end
+        for _, mesh in ipairs(data.staticLightMeshes) do
+            setShaderParameter(mesh.node, "lightIds0", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds1", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds2", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds3", 0, 0, 0, 0, false)
+        end
+
+        return true
+    end,
+    posFunc = function(target, data, noEventSend)
+        for _, node in ipairs(data.realLightNodes) do
+            setVisibility(node, true)
+        end
+        for _, mesh in ipairs(data.staticLightMeshes) do
+            local i = mesh.intensity
+            setShaderParameter(mesh.node, "lightIds0", i, i, i, i, false)
+            setShaderParameter(mesh.node, "lightIds1", i, i, i, i, false)
+            setShaderParameter(mesh.node, "lightIds2", i, i, i, i, false)
+            setShaderParameter(mesh.node, "lightIds3", i, i, i, i, false)
+        end
+    end,
+    negFunc = function(target, data, noEventSend)
+        for _, node in ipairs(data.realLightNodes) do
+            setVisibility(node, false)
+        end
+        for _, mesh in ipairs(data.staticLightMeshes) do
+            setShaderParameter(mesh.node, "lightIds0", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds1", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds2", 0, 0, 0, 0, false)
+            setShaderParameter(mesh.node, "lightIds3", 0, 0, 0, 0, false)
+        end
+    end,
+    isBlockedFunc = function(target, data)
+        return #data.realLightNodes > 0 or #data.staticLightMeshes > 0
+    end
+})
+
+-- Shared helpers for WINCH_IN / WINCH_OUT ---------------------------------------------------------
+
+local function winchSchemaFunc(schema, path)
+    schema:register(XMLValueType.VECTOR_N, path .. ".winch#ropeIndices", "Space-separated list of 1-based rope indices to control (e.g. \"1 2\" controls both ropes simultaneously)", true)
+end
+
+-- loadFunc receives the actor as 4th arg so we can cache the controller for isHoldActive checks.
+local function winchLoadFunc(xmlFile, key, data, actor)
+    data.ropeIndices = xmlFile:getValue(key .. ".winch#ropeIndices", nil, true)
+    if data.ropeIndices == nil or #data.ropeIndices == 0 then
+        Logging.xmlWarning(xmlFile, "WINCH function missing required '.winch#ropeIndices' — set at least one rope index (e.g. ropeIndices=\"1\")")
+        return false
+    end
+    if actor ~= nil then
+        data.controller = actor.interactiveController
+    end
+    return true
+end
+
+local function winchIsBlockedFunc(vehicle, data)
+    local spec = vehicle.spec_winch
+    if spec == nil or spec.ropes == nil then
+        return false
+    end
+    for _, ropeIndex in ipairs(data.ropeIndices) do
+        if spec.ropes[ropeIndex] ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+local function winchControlAll(vehicle, data, direction)
+    if vehicle.setWinchControlInput == nil then
+        return
+    end
+    for _, ropeIndex in ipairs(data.ropeIndices) do
+        vehicle:setWinchControlInput(ropeIndex, direction)
+    end
+end
+
+---FUNCTION_WINCH_IN — pulls the rope(s) in while the click point is held
+InteractiveFunctions.addFunction("WINCH_IN", {
+    schemaFunc = winchSchemaFunc,
+    loadFunc = winchLoadFunc,
+    requiresHolding = true,
+    posFunc = function(vehicle, data)
+        winchControlAll(vehicle, data, 1)
+    end,
+    negFunc = function(vehicle, data)
+        winchControlAll(vehicle, data, 0)
+    end,
+    updateFunc = function(vehicle, data)
+        -- Called every frame; keep the winch moving for as long as the hold is active.
+        if data.controller ~= nil and data.controller.isHoldActive then
+            winchControlAll(vehicle, data, 1)
+        end
+        return nil
+    end,
+    isBlockedFunc = winchIsBlockedFunc,
+})
+
+---FUNCTION_WINCH_OUT — releases the rope(s) while the click point is held
+InteractiveFunctions.addFunction("WINCH_OUT", {
+    schemaFunc = winchSchemaFunc,
+    loadFunc = winchLoadFunc,
+    requiresHolding = true,
+    posFunc = function(vehicle, data)
+        winchControlAll(vehicle, data, -1)
+    end,
+    negFunc = function(vehicle, data)
+        winchControlAll(vehicle, data, 0)
+    end,
+    updateFunc = function(vehicle, data)
+        if data.controller ~= nil and data.controller.isHoldActive then
+            winchControlAll(vehicle, data, -1)
+        end
+        return nil
+    end,
+    isBlockedFunc = winchIsBlockedFunc,
+})
