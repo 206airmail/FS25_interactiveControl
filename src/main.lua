@@ -33,13 +33,16 @@ local sourceFiles = {
     "src/interactiveControl/interactiveActions/InteractiveAction.lua",
     "src/interactiveControl/interactiveActions/InteractiveClickPoint.lua",
     "src/interactiveControl/interactiveActions/InteractiveButton.lua",
+    "src/interactiveControl/interactiveActions/InteractiveAxisPoint.lua",
 
     "src/interactiveControl/interactiveActors/InteractiveActor.lua",
     "src/interactiveControl/interactiveActors/InteractiveActorAnimation.lua",
+    "src/interactiveControl/interactiveActors/InteractiveActorMovingTool.lua",
+    "src/interactiveControl/interactiveActors/InteractiveActorLeverAnimation.lua",
     "src/interactiveControl/interactiveActors/InteractiveActorDependingController.lua",
     "src/interactiveControl/interactiveActors/InteractiveActorFunction.lua",
     "src/interactiveControl/interactiveActors/InteractiveActorObjectChange.lua",
-    -- "src/interactiveControl/interactiveActors/InteractiveActorDashboard.lua",
+    "src/interactiveControl/interactiveActors/InteractiveActorDashboard.lua",
 
     -- network
     "src/events/ICStateEvent.lua",
@@ -228,6 +231,46 @@ local function consoleCommandReloadVehicle(vehicleSystem, resetVehicle, radius)
     modEnvironment.injectionManager:loadInjectionXMLs()
 end
 
+---Returns true when an axis IC hold is active and the drag axis matches the given axis.
+---@param axis string "X" or "Y"
+local function isAxisHoldActive(axis)
+    return isLoaded()
+        and modEnvironment.activeController ~= nil
+        and modEnvironment.activeController.isHoldActive
+        and modEnvironment.activeController:anyActionIsAxis()
+        and modEnvironment.activeController:getAxisDragAxis() == axis
+end
+
+---Overwritten function: PlayerInputComponent.onInputLookUpDown
+---When a Y-axis IC hold is active, redirect mouse Y to the moving tool and suppress camera rotation.
+---@param inputComp PlayerInputComponent
+---@param superFunc function original function
+local function injectPlayerLookUpDown(inputComp, superFunc, actionName, inputValue, ...)
+    if isAxisHoldActive("Y") then
+        if inputValue ~= 0 then
+            local sensitivity = modEnvironment.activeController:getAxisSensitivity()
+            modEnvironment.activeController:setAxisDriveSpeed(inputValue * sensitivity)
+        end
+        return
+    end
+    return superFunc(inputComp, actionName, inputValue, ...)
+end
+
+---Overwritten function: PlayerInputComponent.onInputLookLeftRight
+---When an X-axis IC hold is active, redirect mouse X to the moving tool and suppress camera rotation.
+---@param inputComp PlayerInputComponent
+---@param superFunc function original function
+local function injectPlayerLookLeftRight(inputComp, superFunc, actionName, inputValue, ...)
+    if isAxisHoldActive("X") then
+        if inputValue ~= 0 then
+            local sensitivity = modEnvironment.activeController:getAxisSensitivity()
+            modEnvironment.activeController:setAxisDriveSpeed(inputValue * sensitivity)
+        end
+        return
+    end
+    return superFunc(inputComp, actionName, inputValue, ...)
+end
+
 ---Initialize the mod
 local function init()
     FSBaseMission.delete = Utils.appendedFunction(FSBaseMission.delete, unload)
@@ -241,6 +284,9 @@ local function init()
     XMLFile.initInheritance = Utils.prependedFunction(XMLFile.initInheritance, preInitInheritance)
     XMLFile.initInheritance = Utils.appendedFunction(XMLFile.initInheritance, postInitInheritance)
     VehicleSystem.consoleCommandReloadVehicle = Utils.prependedFunction(VehicleSystem.consoleCommandReloadVehicle, consoleCommandReloadVehicle)
+
+    PlayerInputComponent.onInputLookUpDown = Utils.overwrittenFunction(PlayerInputComponent.onInputLookUpDown, injectPlayerLookUpDown)
+    PlayerInputComponent.onInputLookLeftRight = Utils.overwrittenFunction(PlayerInputComponent.onInputLookLeftRight, injectPlayerLookLeftRight)
 
     -- AdditionalSettingsManager
     local modEnvMeta = getmetatable(_G)

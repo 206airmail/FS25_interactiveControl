@@ -137,9 +137,6 @@ function InteractiveControl:onLoad(savegame)
     spec.interactiveTrigger = {}
     -- spec.interactiveControlDependingDashboards = {}
 
-    spec.movingToolsToInteractiveController = {}
-    spec.movingPartsToInteractiveController = {}
-
     local interactiveControlConfigurationId = Utils.getNoNil(self.configurations.interactiveControl, 1)
 
     for _, baseKey in ipairs({
@@ -156,20 +153,6 @@ function InteractiveControl:onLoad(savegame)
                 -- for _, dependingDashboard in ipairs(interactiveController.dependingDashboards) do
                 --     spec.interactiveControlDependingDashboards[dependingDashboard.identifier] = dependingDashboard
                 -- end
-
-                local dependingMovingTools = interactiveController:getMovingTools()
-                if dependingMovingTools ~= nil then
-                    for dependingMovingTool in pairs(dependingMovingTools) do
-                        spec.movingToolsToInteractiveController[dependingMovingTool] = interactiveController
-                    end
-                end
-
-                local dependingMovingParts = interactiveController:getMovingParts()
-                if dependingMovingParts ~= nil then
-                    for dependingMovingPart in pairs(dependingMovingParts) do
-                        spec.movingPartsToInteractiveController[dependingMovingPart] = interactiveController
-                    end
-                end
             else
                 interactiveController:delete()
                 Logging.xmlWarning(self.xmlFile, "Could not load InteractiveController for '%s'", interactiveControlKey)
@@ -183,7 +166,6 @@ function InteractiveControl:onLoad(savegame)
     spec.maxUpdateTime = 0
 
     spec.indoorSoundModifierFactor = InteractiveControl.SOUND_FALLBACK
-    spec.pendingSoundControls = {}
 end
 
 ---Called after load
@@ -319,7 +301,7 @@ function InteractiveControl:onUpdateTick(dt, isActiveForInput, isActiveForInputI
 
     if isOutdoor then
         self:updateInteractiveController(isIndoor, isOutdoor, isActiveForInputIgnoreSelection)
-    elseif g_noHudModeEnabled and isIndoor or isOutdoor then
+    elseif g_noHudModeEnabled and isIndoor then
         self:updateInteractiveController(isIndoor, isOutdoor, isActiveForInputIgnoreSelection)
     elseif not isOutdoor and not isIndoor or not self:isInteractiveControlActivated() then
         self:updateInteractiveController(false, false, isActiveForInputIgnoreSelection)
@@ -383,6 +365,7 @@ function InteractiveControl:updateInteractiveController(isIndoor, isOutdoor, has
 
     ---@type InteractiveController
     local activeController
+    local activeControllerDistSq = math.huge
 
     for _, interactiveController in pairs(spec.interactiveControllers) do
         ---@cast interactiveController InteractiveController
@@ -390,7 +373,11 @@ function InteractiveControl:updateInteractiveController(isIndoor, isOutdoor, has
 
         local activeAction = interactiveController:updateActiveAction()
         if activeAction ~= nil then
-            activeController = interactiveController
+            local distSq = interactiveController:getActiveActionDistSq()
+            if distSq < activeControllerDistSq then
+                activeController = interactiveController
+                activeControllerDistSq = distSq
+            end
         end
     end
 
@@ -839,10 +826,9 @@ end
 function InteractiveControl:getIsMovingToolActive(superFunc, movingTool)
     local spec = self.spec_interactiveControl
 
-    ---@type InteractiveController
-    local interactiveController = spec.movingToolsToInteractiveController[movingTool]
-    if interactiveController ~= nil then
-        if interactiveController:getMovingToolIsInactive(movingTool) then
+    for _, interactiveController in pairs(spec.interactiveControllers) do
+        ---@cast interactiveController InteractiveController
+        if interactiveController:hasDependingMovingTools() and interactiveController:getMovingToolIsInactive(movingTool) then
             return false
         end
     end
@@ -856,10 +842,9 @@ end
 function InteractiveControl:getIsMovingPartActive(superFunc, movingPart)
     local spec = self.spec_interactiveControl
 
-    ---@type InteractiveController
-    local interactiveController = spec.movingPartsToInteractiveController[movingPart]
-    if interactiveController ~= nil then
-        if interactiveController:getMovingPartIsInactive(movingPart) then
+    for _, interactiveController in pairs(spec.interactiveControllers) do
+        ---@cast interactiveController InteractiveController
+        if interactiveController:hasDependingMovingParts() and interactiveController:getMovingPartIsInactive(movingPart) then
             return false
         end
     end

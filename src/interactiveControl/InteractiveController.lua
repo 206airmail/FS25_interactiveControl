@@ -136,6 +136,9 @@ function InteractiveController.new(modName, modDirectory, customMt)
     self.externallyBlocked = false
     self.hoverTimeOut = 0
     self.lastChangeTime = 0
+    self.holdResumeState = nil
+    self.isHoldActive = false
+    self._holdTargetState = nil
 
     self.interactiveActors = {}
     self.interactiveActions = {}
@@ -522,10 +525,126 @@ end
 
 ---Executes controller, based on analog or not
 function InteractiveController:execute()
+    if self.activeAction ~= nil and self.activeAction.canExecute ~= nil and not self.activeAction:canExecute() then
+        return
+    end
+
     if self:isAnalog() then
         self:changeAnalogStateValueInDirection(self:getActiveActionDirection())
+    elseif self.holdResumeState ~= nil then
+        -- Resume toward the same end we were playing to before the hold was released.
+        -- Normalize to binary in case of any corruption (holdResumeState must be 0 or 1).
+        local resumeState = self.holdResumeState
+        if resumeState > 0 and resumeState < 1 then
+            resumeState = (not self:getStateBool()) and 1.0 or 0.0
+        end
+        self.holdResumeState = nil
+        if self:anyActionRequiresHolding() then
+            self.isHoldActive = true
+            self._holdTargetState = resumeState
+        end
+        self:setStateValue(resumeState)
     else
         self:toggleStateValue()
+        if self:anyActionRequiresHolding() then
+            self.isHoldActive = true
+            self._holdTargetState = self.stateValue  -- after toggle: exactly 0.0 or 1.0
+        end
+    end
+end
+
+---Returns true if the currently active action requires holding
+---@return boolean requiresHolding
+function InteractiveController:requiresHolding()
+    if self.activeAction ~= nil and self.activeAction.requiresHolding ~= nil then
+        return self.activeAction:requiresHolding()
+    end
+    return false
+end
+
+---Returns true if ANY action or actor in this controller requires holding
+---@return boolean anyRequiresHolding
+function InteractiveController:anyActionRequiresHolding()
+    for _, action in ipairs(self.interactiveActions) do
+        if action.requiresHolding ~= nil and action:requiresHolding() then
+            return true
+        end
+    end
+    for _, actor in ipairs(self.interactiveActors) do
+        if actor.requiresHolding ~= nil and actor:requiresHolding() then
+            return true
+        end
+    end
+    return false
+end
+
+---Returns true if all actors allow a hold to start right now (e.g. engine is running)
+---@return boolean canStart
+function InteractiveController:canStartAxisHold()
+    for _, actor in ipairs(self.interactiveActors) do
+        if actor.canStartHold ~= nil and not actor:canStartHold() then
+            return false
+        end
+    end
+    return true
+end
+
+---Returns true if ANY action in this controller is an axis drag action
+---@return boolean anyIsAxis
+function InteractiveController:anyActionIsAxis()
+    for _, action in ipairs(self.interactiveActions) do
+        if action.isAxisAction ~= nil and action:isAxisAction() then
+            return true
+        end
+    end
+    return false
+end
+
+---Returns the sensitivity of the first axis action found in this controller
+---@return number sensitivity
+function InteractiveController:getAxisSensitivity()
+    for _, action in ipairs(self.interactiveActions) do
+        if action.getAxisSensitivity ~= nil then
+            return action:getAxisSensitivity()
+        end
+    end
+    return 5.0
+end
+
+---Returns the drag axis ("X" or "Y") of the first axis action found in this controller
+---@return string dragAxis
+function InteractiveController:getAxisDragAxis()
+    for _, action in ipairs(self.interactiveActions) do
+        if action.getDragAxis ~= nil then
+            return action:getDragAxis()
+        end
+    end
+    return "Y"
+end
+
+---Sets drive speed on all moving tool actors in this controller
+---@param speed number Drive speed to apply
+function InteractiveController:setAxisDriveSpeed(speed)
+    for _, actor in ipairs(self.interactiveActors) do
+        if actor.setDriveSpeed ~= nil then
+            actor:setDriveSpeed(speed)
+        end
+    end
+end
+
+---Called when a held button is released; delegates to actors to stop and sync animation position
+function InteractiveController:onHoldReleased()
+    self.isHoldActive = false
+    -- Read the explicit binary target we stored in execute(), not stateValue which may be mid-float.
+    local targetState = self._holdTargetState or (self:getStateBool() and 1.0 or 0.0)
+    self._holdTargetState = nil
+    self:callInteractiveBaseFunction('onHoldReleased', true, false)
+    -- After actors run, stateValue is the mid-float stop position.
+    -- Store the original binary target so the next press resumes in the same direction.
+    if self.stateValue > 0 and self.stateValue < 1 then
+        self.holdResumeState = targetState
+    else
+        self.holdResumeState = nil
     end
 end
 
@@ -599,13 +718,30 @@ function InteractiveController:updateActiveAction()
 
     for _, action in ipairs(self.interactiveActions) do
         if action:isExecutable() then
-            --Todo: add priority?
             self.activeAction = action
             break
         end
     end
 
     return self.activeAction
+end
+
+---Returns the minimum squared screen-space distance to cursor across all executable actions.
+---Actions without getMouseDistSq (e.g. buttons) return math.huge.
+---@return number distSq
+function InteractiveController:getActiveActionDistSq()
+    local minDistSq = math.huge
+
+    for _, action in ipairs(self.interactiveActions) do
+        if action:isExecutable() and action.getMouseDistSq ~= nil then
+            local d = action:getMouseDistSq()
+            if d < minDistSq then
+                minDistSq = d
+            end
+        end
+    end
+
+    return minDistSq
 end
 
 ---Returns direction of active action
@@ -619,7 +755,7 @@ function InteractiveController:getActiveActionDirection()
 end
 
 ---Returns action text by controller state
----@param getForced? boolean
+---@param getForced boolean
 ---@return string actionText
 function InteractiveController:getActionText(getForced)
     if getForced == nil or getForced then
@@ -638,21 +774,33 @@ function InteractiveController:getActionText(getForced)
         return self:getActiveActionDirection() >= 0 and self.posText or self.negText
     end
 
+    if self:anyActionRequiresHolding() then
+        if self.isHoldActive then
+            -- During active hold: show the direction currently playing (opposite of target state).
+            -- stateValue is already the target (0 or 1), so invert getStateBool to get current direction.
+            return (not self:getStateBool()) and self.posText or self.negText
+        elseif self.holdResumeState ~= nil then
+            -- After mid-stop: show what the next hold will do (resume toward holdResumeState).
+            -- holdResumeState=0 means resuming toward 0 → posText; =1 means toward 1 → negText.
+            return (self.holdResumeState < 0.5) and self.posText or self.negText
+        end
+    end
+
     return self:getStateBool() and self.posText or self.negText
 end
 
 ---Returns action input button by controller state
 ---@return InputAction inputButton
 function InteractiveController:getActionInputButton()
-    return self.activeAction.inputButton
+    return self.activeAction ~= nil and self.activeAction.inputButton or nil
 end
 
 ------------------------------------------------------ Cylindered ------------------------------------------------------
 
----Returns table with all depending moving tools
----@return table
-function InteractiveController:getMovingTools()
-    return self.movingToolsInactive
+---Returns true if moving tools are set, false otherwise
+---@return boolean hasDependingMovingTools
+function InteractiveController:hasDependingMovingTools()
+    return table.size(self.movingToolsInactive) > 0
 end
 
 ---Returns true if movingTool is inactive, false otherwise
@@ -666,10 +814,10 @@ function InteractiveController:getMovingToolIsInactive(movingTool)
     return false
 end
 
----Returns table with all depending moving parts
----@return table
-function InteractiveController:getMovingParts()
-    return self.movingPartsInactive
+---Returns true if moving parts are set, false otherwise
+---@return boolean hasDependingMovingParts
+function InteractiveController:hasDependingMovingParts()
+    return table.size(self.movingPartsInactive) > 0
 end
 
 ---Returns true if movingPart is inactive, false otherwise

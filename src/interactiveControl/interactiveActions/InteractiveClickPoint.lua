@@ -41,11 +41,14 @@ function InteractiveClickPoint.registerXMLPaths(schema, basePath, controllerPath
         iconTypes = string.format("%s %s", iconTypes, name)
     end
 
-    schema:register(XMLValueType.STRING, basePath .. "#iconType", ("Types of click point: %s"):format(iconTypes), "CROSS")
+    schema:register(XMLValueType.STRING, basePath .. "#iconType", ("Types of click point: %s"):format(iconTypes), "CROSS", true)
     schema:register(XMLValueType.BOOL, basePath .. "#alignToCamera", "Aligns click point to current camera", true)
     schema:register(XMLValueType.BOOL, basePath .. "#invertX", "Invert click icon on x-axis", false)
     schema:register(XMLValueType.BOOL, basePath .. "#invertZ", "Invert click icon on z-axis", false)
-    schema:register(XMLValueType.BOOL, basePath .. "#showClickIcon", "Show click icon if activated, if false the click point is still useable.", true)
+    schema:register(XMLValueType.BOOL, basePath .. "#requireHolding", "Requires mouse button held; releases stop the animation at current position", false)
+    schema:register(XMLValueType.BOOL, basePath .. "#requiresEngine", "When true, the click icon is hidden and inactive unless the vehicle engine is running", false)
+    schema:register(XMLValueType.VECTOR_3, basePath .. "#color", "RGB color multiplier for the click icon (e.g. '1 0 0' for red, '1 1 1' for white)", false)
+    schema:register(XMLValueType.FLOAT, basePath .. "#intensity", "Emissive intensity (lightControl) of the click icon — higher values make colors more vivid and dark colors darker (0-20)", 1.0)
 end
 
 ---Create new instance of InteractiveClickPoint
@@ -67,9 +70,13 @@ function InteractiveClickPoint.new(modName, modDirectory, customMt)
     self.alignToCamera = true
     self.invertX = false
     self.invertZ = false
+    self.requireHolding = false
+    self.requiresEngine = false
+    self.color = nil
+    self.intensity = 1.0
     self.sharedLoadRequestId = nil
     self.hoverTime = 0
-    self.showClickIcon = true
+    self.mouseDistSq = math.huge
 
     return self
 end
@@ -115,9 +122,12 @@ function InteractiveClickPoint:loadFromXML(xmlFile, key, target, interactiveCont
     self.alignToCamera = xmlFile:getValue(key .. "#alignToCamera", true)
     self.invertX = xmlFile:getValue(key .. "#invertX", false)
     self.invertZ = xmlFile:getValue(key .. "#invertZ", false)
+    self.requireHolding = xmlFile:getValue(key .. "#requireHolding", false)
+    self.requiresEngine = xmlFile:getValue(key .. "#requiresEngine", false)
+    self.color = xmlFile:getValue(key .. "#color", nil, true)
+    self.intensity = xmlFile:getValue(key .. "#intensity", 1.0)
     self.rotation = xmlFile:getValue(key .. "#rotation", nil, true)
     self.translation = xmlFile:getValue(key .. "#translation", nil, true)
-    self.showClickIcon = xmlFile:getValue(key .. "#showClickIcon", true)
     self.sharedLoadRequestId = self:loadIconType(iconType, target)
 
     return true
@@ -152,7 +162,7 @@ function InteractiveClickPoint:update(isIndoor, isOutdoor, hasInput)
         return
     end
 
-    if self:isExecutable() and not self.interactiveController:hasHoverTimeout() then
+    if self:isExecutable() and not self.interactiveController:hasHoverTimeout() and not self.requireHolding then
         if self.hoverTime == 0 then
             self.hoverTime = g_currentMission.time + clickPointHoverTime * 1000
         else
@@ -180,6 +190,20 @@ function InteractiveClickPoint:isActivatable()
     return InteractiveClickPoint:superClass().isActivatable(self)
 end
 
+---Returns false (with a warning popup) if requiresEngine is set and the engine is not running.
+---Called by the controller before executing so the icon remains visible and hoverable.
+---@return boolean canExecute
+function InteractiveClickPoint:canExecute()
+    if self.requiresEngine then
+        local rootVehicle = self.target.rootVehicle
+        if rootVehicle ~= nil and rootVehicle.getIsMotorStarted ~= nil and not rootVehicle:getIsMotorStarted() then
+            g_currentMission:showBlinkingWarning(g_i18n:getText("warning_motorNotStarted"), 2000)
+            return false
+        end
+    end
+    return true
+end
+
 ---Sets activation state
 ---@param activated boolean is action activated
 ---@param forced? boolean Forced activation set
@@ -187,7 +211,7 @@ function InteractiveClickPoint:setActivated(activated, forced)
     InteractiveClickPoint:superClass().setActivated(self, activated, forced)
 
     if self.clickIconNode ~= nil then
-        setVisibility(self.clickIconNode, self.activated and self.showClickIcon)
+        setVisibility(self.clickIconNode, self.activated)
     end
 
     if not self.activated then
@@ -196,8 +220,8 @@ function InteractiveClickPoint:setActivated(activated, forced)
 end
 
 ---Updates screen position of clickPoint
----@param mousePosX number|nil x position of mouse
----@param mousePosY number|nil y position of mouse
+---@param mousePosX number x position of mouse
+---@param mousePosY number y position of mouse
 ---@param isIndoor boolean True if update is indoor
 ---@param isOutdoor boolean True if update is outdoor
 function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndoor, isOutdoor)
@@ -208,29 +232,15 @@ function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndo
     self.screenPosY = sy
 
     local isOnScreen = sx > -1 and sx < 2 and sy > -1 and sy < 2 and sz <= 1
-    if not isOnScreen then
-        return
-    end
 
-    local cameraNode = getCamera()
-    if entityExists(cameraNode) then
-        if self.alignToCamera then
-            -- Align clickPoint node to camera
-            local xC, yC, zC = getWorldTranslation(cameraNode)
-            local dirX, dirY, dirZ = xC - x, yC - y, zC - z
+    if isOnScreen then
+        local cameraNode = getCamera()
 
-            if self.invertZ then
-                dirX = -dirX
-                dirY = -dirY
-                dirZ = -dirZ
-            end
-
-            I3DUtil.setWorldDirection(self.node, dirX, dirY, dirZ, 0, 1, 0)
-        else
-            if isOutdoor then
-                -- Disable static clickPoint if not in camera direction view
-                local dirX, dirY, dirZ = localDirectionToWorld(self.node, 0, 0, 1)
-                local cameraDirectionX, cameraDirectionY, cameraDirectionZ = localDirectionToWorld(cameraNode, 0, 0, -1)
+        if entityExists(cameraNode) then
+            if self.alignToCamera then
+                -- Align clickPoint node to camera
+                local xC, yC, zC = getWorldTranslation(cameraNode)
+                local dirX, dirY, dirZ = xC - x, yC - y, zC - z
 
                 if self.invertZ then
                     dirX = -dirX
@@ -238,16 +248,30 @@ function InteractiveClickPoint:updateScreenPosition(mousePosX, mousePosY, isIndo
                     dirZ = -dirZ
                 end
 
-                local dotProduct = MathUtil.dotProduct(cameraDirectionX, cameraDirectionY, cameraDirectionZ, dirX, dirY, dirZ)
-                if dotProduct > InteractiveClickPoint.DOT_PRODUCT_LIMIT then
-                    mousePosX = nil
-                    mousePosY = nil
+                I3DUtil.setWorldDirection(self.node, dirX, dirY, dirZ, 0, 1, 0)
+            else
+                if isOutdoor then
+                    -- Disable static clickPoint if not in camera direction view
+                    local dirX, dirY, dirZ = localDirectionToWorld(self.node, 0, 0, 1)
+                    local cameraDirectionX, cameraDirectionY, cameraDirectionZ = localDirectionToWorld(cameraNode, 0, 0, -1)
+
+                    if self.invertZ then
+                        dirX = -dirX
+                        dirY = -dirY
+                        dirZ = -dirZ
+                    end
+
+                    local dotProduct = MathUtil.dotProduct(cameraDirectionX, cameraDirectionY, cameraDirectionZ, dirX, dirY, dirZ)
+                    if dotProduct > InteractiveClickPoint.DOT_PRODUCT_LIMIT then
+                        mousePosX = nil
+                        mousePosY = nil
+                    end
                 end
             end
         end
-    end
 
-    self:updateClickable(mousePosX, mousePosY)
+        self:updateClickable(mousePosX, mousePosY)
+    end
 end
 
 ---Updates clickable state by mouse position
@@ -259,7 +283,7 @@ function InteractiveClickPoint:updateClickable(mousePosX, mousePosY)
         local isMouseOver = mousePosX > self.screenPosX - halfSize and mousePosX < self.screenPosX + halfSize
             and mousePosY > self.screenPosY - halfSize and mousePosY < self.screenPosY + halfSize
 
-        if self.clickIconNode ~= nil and self.showClickIcon then
+        if self.clickIconNode ~= nil then
             local scale = getScale(self.clickIconNode)
             scale = math.abs(scale)
             if isMouseOver then
@@ -269,7 +293,7 @@ function InteractiveClickPoint:updateClickable(mousePosX, mousePosY)
                 scale = scale + self.blinkSpeed * self.blinkSpeedScale
             else
                 if scale ~= self.size then
-                    self.size = scale
+                    scale = self.size
                 end
             end
 
@@ -277,10 +301,26 @@ function InteractiveClickPoint:updateClickable(mousePosX, mousePosY)
             setScale(self.clickIconNode, scale * xScale, scale, scale)
         end
 
+        if isMouseOver then
+            local dx = mousePosX - self.screenPosX
+            local dy = mousePosY - self.screenPosY
+            self.mouseDistSq = dx * dx + dy * dy
+        else
+            self.mouseDistSq = math.huge
+        end
+
         self:setClickable(isMouseOver)
     else
+        self.mouseDistSq = math.huge
         self:setClickable(false)
     end
+end
+
+---Returns squared screen-space distance from cursor to this click point's center.
+---math.huge when not hovered.
+---@return number mouseDistSq
+function InteractiveClickPoint:getMouseDistSq()
+    return self.mouseDistSq
 end
 
 ---Sets clickable state
@@ -301,6 +341,12 @@ end
 ---@return boolean executable is executable
 function InteractiveClickPoint:isExecutable()
     return InteractiveClickPoint:superClass().isExecutable(self) and self:isClickable()
+end
+
+---Returns true if this click point requires the button to be held during animation
+---@return boolean requireHolding
+function InteractiveClickPoint:requiresHolding()
+    return self.requireHolding
 end
 
 ---Returns max hover timeout
@@ -360,11 +406,17 @@ function InteractiveClickPoint:onIconTypeLoading(i3dNode, failedReason, args)
     setRotation(node, 0, yRot, 0)
     local xScale = self.invertX and -1 or 1
     setScale(node, self.size * xScale, self.size, self.size)
-    -- setVisibility(node, true)
     setVisibility(node, false)
 
     self.clickIconNode = node
     self.blinkSpeed = clickIcon.blinkSpeed
+
+    local r, g, b = 0.518, 0.667, 0.063  -- default: RGB 132 170 16
+    if self.color ~= nil then
+        r, g, b = self.color[1], self.color[2], self.color[3]
+    end
+    setShaderParameter(node, "colorScale", r, g, b, 0, false)
+    setShaderParameter(node, "lightControl", self.intensity, 0, 0, 0, false)
 
     link(self.node, node)
     delete(i3dNode)
