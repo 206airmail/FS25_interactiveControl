@@ -83,7 +83,7 @@
         <e k="settingsIC_clickPointHover_tooltip" v="Changement d&#39;InteractiveControl si vous survolez le clickPoint pendant un certain temps"/>
         <e k="settingsIC_keepAlive_title" v="Garder IC activé"/>
         <e k="settingsIC_keepAlive_tooltip" v="InteractiveControl reste actif lorsque vous quittez le véhicule."/>
-        <e k="settingsIC_state_option01" v="Switchable"/>
+        <e k="settingsIC_state_option01" v="Commutable"/>
         <e k="settingsIC_state_option02" v="Toujours actif"/>
         <e k="settingsIC_state_option03" v="Désactivé"/>
         <e k="settingsIC_state_title" v="État IC"/>

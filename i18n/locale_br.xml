@@ -47,8 +47,8 @@
         <e k="actionIC_pipeLightsOn" v="IC: Acenda a luz do tubo"/>
         <e k="actionIC_pumpDirectionDrain" v="IC: Mudar a direção da bomba para: Drenagem"/>
         <e k="actionIC_pumpDirectionFill" v="IC: Mudar a direção da bomba para: Encher"/>
-        <e k="actionIC_radioOff" v="IC: Radio off"/>
-        <e k="actionIC_radioOn" v="IC: Radio on"/>
+        <e k="actionIC_radioOff" v="IC: Rádio desligado"/>
+        <e k="actionIC_radioOn" v="IC: Rádio ligado"/>
         <e k="actionIC_reverseDriving_toggle" v="IC: Alternar a marcha-atrás"/>
         <e k="actionIC_sa_activate" v="IC: Ativar orientação de pista"/>
         <e k="actionIC_sa_deactivate" v="IC: Desativar a orientação de pista"/>

@@ -47,8 +47,8 @@
         <e k="actionIC_pipeLightsOn" v="IC: Włączanie światła rury"/>
         <e k="actionIC_pumpDirectionDrain" v="IC: Zmiana kierunku pompy na: Puste"/>
         <e k="actionIC_pumpDirectionFill" v="IC: Zmień kierunek pompy na: Napełnianie"/>
-        <e k="actionIC_radioOff" v="IC: Radio off"/>
-        <e k="actionIC_radioOn" v="IC: Radio on"/>
+        <e k="actionIC_radioOff" v="IC: Radio wyłączone"/>
+        <e k="actionIC_radioOn" v="IC: Radio włączone"/>
         <e k="actionIC_reverseDriving_toggle" v="IC: Zmiana kierunku jazdy"/>
         <e k="actionIC_sa_activate" v="IC: Aktywacja naprowadzania na pas ruchu"/>
         <e k="actionIC_sa_deactivate" v="IC: Wyłącz naprowadzanie na pas ruchu"/>

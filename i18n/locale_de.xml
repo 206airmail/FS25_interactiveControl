@@ -75,7 +75,7 @@
         <e k="action_activateIC" v="Interactive Control aktivieren"/>
         <e k="action_deactivateIC" v="Interactive Control deaktivieren"/>
         <e k="configuration_interactiveControl" v="Interactive Control"/>
-        <e k="input_IC_CLICK" v="IC: Interactive Control ClickPoint"/>
+        <e k="input_IC_CLICK" v="IC: Interactive Control Klickpunkt"/>
         <e k="input_IC_TOGGLE_STATE" v="IC: Interactive Control umschalten"/>
         <e k="settingsIC_clickPointHover_optionTime" v="%.1f s"/>
         <e k="settingsIC_clickPointHover_optionTimeOff" v="Aus"/>
