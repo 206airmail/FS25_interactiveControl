@@ -38,7 +38,9 @@ function InteractiveActorMovingTool.new(modName, modDirectory, customMt)
     local self = InteractiveActorMovingTool:superClass().new(modName, modDirectory, customMt or interactiveActorMovingTool_mt)
 
     self.movingTool = nil
+    self.movingToolIndex = nil
     self.driveSpeed = 0
+    self.hasPendingStop = false
 
     return self
 end
@@ -81,6 +83,17 @@ function InteractiveActorMovingTool:loadFromXML(xmlFile, key, target, interactiv
         end
     end
 
+    for i, t in ipairs(spec.movingTools) do
+        if t == self.movingTool then
+            self.movingToolIndex = i
+            break
+        end
+    end
+    if self.movingToolIndex == nil then
+        Logging.xmlWarning(xmlFile, "axisMovingTool: could not resolve moving tool index, ignoring actor!")
+        return false
+    end
+
     return true
 end
 
@@ -94,6 +107,9 @@ end
 
 ---Applies an input value to the moving tool using the same formula Cylindered uses for in-vehicle
 ---mouse dragging: invertAxis → armSensitivity → (16.666/dt) → mouseSpeedFactor → tool.move.
+---On a listen server the value is set directly. On a dedicated server client the value is sent to
+---the server via ICMovingToolInputEvent, because cylinderedInputDirtyFlag only syncs tools that
+---have an axisActionIndex (input-bound tools) — IC moving tools are not input-bound.
 ---@param inputValue number The value to apply (0 to stop the tool)
 function InteractiveActorMovingTool:applyInputToTool(inputValue)
     local tool = self.movingTool
@@ -103,28 +119,36 @@ function InteractiveActorMovingTool:applyInputToTool(inputValue)
     local mouseSpeedFactor = tool.mouseSpeedFactor or 1
     move = move * 16.666 / g_currentDt * mouseSpeedFactor
 
-    tool.lastInputTime = g_time
-
-    if move ~= tool.move then
+    if g_server ~= nil then
+        -- Listen server or singleplayer: set directly, Cylindered:onUpdate() picks it up this frame.
         tool.move = move
-    end
-    if tool.move ~= tool.moveToSend then
-        tool.moveToSend = tool.move
-        self.target:raiseDirtyFlags(self.target.spec_cylindered.cylinderedInputDirtyFlag)
+        tool.lastInputTime = g_time
+    else
+        -- Dedicated server client: send to server. The server's Cylindered:onUpdate() moves the
+        -- tool and syncs the position back via cylinderedDirtyFlag.
+        g_client:getServerConnection():sendEvent(ICMovingToolInputEvent.new(self.target, self.movingToolIndex, move))
+        if move ~= 0 then
+            self.hasPendingStop = true
+        end
     end
 end
 
 ---Called each frame — drives the moving tool using the same formula as Cylindered's in-vehicle
 ---mouse input path. driveSpeed is set by the mouse-hook each frame and is 0 when the mouse is
 ---still, causing the tool to stop (matching in-vehicle behaviour).
----Only runs on the controlling client (hasInput=true); the server receives tool.move via the
----cylinderedInputDirtyFlag network sync and must not zero it independently.
+---hasInput is intentionally not checked here: outdoor IC interactions run with hasInput=false
+---(the vehicle has no seated driver), but the axis hold and driveSpeed are still valid. The
+---server never calls this function (onUpdateTick guards on isClient), so no server-side guard
+---is needed. Sync to the server is handled by ICMovingToolInputEvent in applyInputToTool.
 function InteractiveActorMovingTool:update(isIndoor, isOutdoor, hasInput)
-    if self.movingTool == nil or not hasInput then return end
+    if self.movingTool == nil then return end
 
     if not self.interactiveController.isHoldActive then
-        if self.movingTool.move ~= 0 then
+        -- On listen server/singleplayer use tool.move directly; on dedicated server client use
+        -- hasPendingStop since tool.move is never set locally (only set server-side via event).
+        if self.movingTool.move ~= 0 or self.hasPendingStop then
             self:applyInputToTool(0)
+            self.hasPendingStop = false
         end
         self.driveSpeed = 0
         return

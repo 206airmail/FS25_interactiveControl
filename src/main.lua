@@ -24,7 +24,6 @@ local sourceFiles = {
 
     "src/misc/InteractiveControlManager.lua",
     "src/misc/InteractiveFunctions.lua",
-    "src/misc/InteractiveFunctions_externalMods.lua",
 
     -- interactiveControl
     "src/interactiveControl/InteractiveController.lua",
@@ -47,6 +46,7 @@ local sourceFiles = {
     -- network
     "src/events/ICStateEvent.lua",
     "src/events/ICStateValueEvent.lua",
+    "src/events/ICMovingToolInputEvent.lua",
 }
 
 for _, sourceFile in ipairs(sourceFiles) do
